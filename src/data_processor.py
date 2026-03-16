@@ -9,6 +9,30 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 from typing import Tuple, Dict, Any
 
 
+# Feature configurations for each disease module
+FEATURE_CONFIGS = {
+    'diabetes': {
+        'features': ['Pregnancies', 'Glucose', 'BloodPressure', 'SkinThickness', 
+                    'Insulin', 'BMI', 'DiabetesPedigreeFunction', 'Age'],
+        'zero_impute_cols': ['Glucose', 'BloodPressure', 'BMI'],
+        'target': 'Outcome'
+    },
+    'heart': {
+        'features': ['age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg', 
+                    'thalach', 'exang', 'oldpeak', 'slope', 'ca', 'thal'],
+        'zero_impute_cols': [],
+        'target': 'target'
+    },
+    'ckd': {
+        'features': ['age', 'bp', 'sg', 'al', 'su', 'bgr', 'bu', 'sc', 'sod', 
+                    'pot', 'hemo', 'pcv', 'wbcc', 'rbcc', 'htn', 'dm', 'cad', 
+                    'appet', 'pe', 'ane'],
+        'zero_impute_cols': [],
+        'target': 'classification'
+    }
+}
+
+
 class DataProcessor:
     """Handles all data preprocessing operations for patient health data"""
     
@@ -78,3 +102,28 @@ class DataProcessor:
             df_processed = self.encode_categorical(df_processed, categorical_cols)
         
         return df_processed
+    
+    def validate_and_preprocess(self, df: pd.DataFrame, disease: str) -> pd.DataFrame:
+        """Disease-specific validation and preprocessing"""
+        if disease not in FEATURE_CONFIGS:
+            raise ValueError(f"Unknown disease: {disease}. Must be one of {list(FEATURE_CONFIGS.keys())}")
+        
+        config = FEATURE_CONFIGS[disease]
+        
+        # Check for missing columns
+        missing = [f for f in config['features'] if f not in df.columns]
+        if missing:
+            raise ValueError(f'Missing required columns for {disease}: {missing}')
+        
+        # Select only required features
+        df_clean = df[config['features']].copy()
+        
+        # Replace zeros with NaN for biological impossibilities
+        for col in config['zero_impute_cols']:
+            if col in df_clean.columns:
+                df_clean[col] = df_clean[col].replace(0, np.nan)
+        
+        # Impute missing values with median
+        df_clean.fillna(df_clean.median(numeric_only=True), inplace=True)
+        
+        return df_clean

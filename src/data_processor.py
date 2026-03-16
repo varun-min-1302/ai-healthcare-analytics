@@ -1,0 +1,80 @@
+"""
+Data Processing Module
+Handles data loading, validation, preprocessing, and feature engineering
+"""
+
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from typing import Tuple, Dict, Any
+
+
+class DataProcessor:
+    """Handles all data preprocessing operations for patient health data"""
+    
+    def __init__(self):
+        self.scaler = StandardScaler()
+        self.label_encoders = {}
+    
+    def load_data(self, filepath: str) -> pd.DataFrame:
+        """Load patient data from CSV file"""
+        try:
+            df = pd.read_csv(filepath)
+            return df
+        except Exception as e:
+            raise ValueError(f"Error loading data: {str(e)}")
+    
+    def validate_data(self, df: pd.DataFrame, required_columns: list) -> Tuple[bool, str]:
+        """Validate that dataframe contains required columns"""
+        missing_cols = set(required_columns) - set(df.columns)
+        if missing_cols:
+            return False, f"Missing required columns: {missing_cols}"
+        return True, "Validation passed"
+    
+    def handle_missing_values(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Impute missing values: median for numeric, mode for categorical"""
+        df_clean = df.copy()
+        
+        # Drop columns with >40% missing values
+        threshold = 0.4
+        missing_pct = df_clean.isnull().sum() / len(df_clean)
+        cols_to_drop = missing_pct[missing_pct > threshold].index
+        df_clean = df_clean.drop(columns=cols_to_drop)
+        
+        # Impute remaining nulls
+        for col in df_clean.columns:
+            if df_clean[col].isnull().any():
+                if df_clean[col].dtype in ['float64', 'int64']:
+                    df_clean[col].fillna(df_clean[col].median(), inplace=True)
+                else:
+                    df_clean[col].fillna(df_clean[col].mode()[0], inplace=True)
+        
+        return df_clean
+    
+    def encode_categorical(self, df: pd.DataFrame, categorical_cols: list) -> pd.DataFrame:
+        """Encode categorical variables"""
+        df_encoded = df.copy()
+        
+        for col in categorical_cols:
+            if col in df_encoded.columns:
+                le = LabelEncoder()
+                df_encoded[col] = le.fit_transform(df_encoded[col].astype(str))
+                self.label_encoders[col] = le
+        
+        return df_encoded
+    
+    def preprocess_pipeline(self, df: pd.DataFrame, target_col: str = None) -> pd.DataFrame:
+        """Complete preprocessing pipeline"""
+        # Handle missing values
+        df_processed = self.handle_missing_values(df)
+        
+        # Identify categorical columns
+        categorical_cols = df_processed.select_dtypes(include=['object']).columns.tolist()
+        if target_col and target_col in categorical_cols:
+            categorical_cols.remove(target_col)
+        
+        # Encode categorical variables
+        if categorical_cols:
+            df_processed = self.encode_categorical(df_processed, categorical_cols)
+        
+        return df_processed

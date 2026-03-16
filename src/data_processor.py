@@ -110,6 +110,10 @@ class DataProcessor:
         
         config = FEATURE_CONFIGS[disease]
         
+        # Check for empty dataframe
+        if df.empty:
+            raise ValueError("DataFrame is empty. Please provide valid patient data.")
+        
         # Check for missing columns
         missing = [f for f in config['features'] if f not in df.columns]
         if missing:
@@ -127,3 +131,27 @@ class DataProcessor:
         df_clean.fillna(df_clean.median(numeric_only=True), inplace=True)
         
         return df_clean
+    
+    def validate_csv(self, df: pd.DataFrame, disease: str) -> Tuple[bool, str]:
+        """Validate CSV format and columns"""
+        if df.empty:
+            return False, "CSV file is empty. Please provide valid patient data."
+        
+        if disease not in FEATURE_CONFIGS:
+            return False, f"Unknown disease: {disease}"
+        
+        config = FEATURE_CONFIGS[disease]
+        required = set(config['features'])
+        provided = set(df.columns)
+        
+        missing = required - provided
+        extra = provided - required
+        
+        if missing:
+            return False, f"Missing required columns: {', '.join(missing)}"
+        
+        if extra:
+            # Extra columns are OK, just warn
+            return True, f"Note: Extra columns will be ignored: {', '.join(extra)}"
+        
+        return True, "Validation passed"

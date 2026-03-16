@@ -85,23 +85,28 @@ h2, h3 {
 </style>
 ''', unsafe_allow_html=True)
 
-# Load models at startup
+# Load models at startup with error handling
 @st.cache_resource
 def load_models():
-    """Load all disease prediction models (cached)"""
+    """Load all disease prediction models (cached for performance)"""
     from src.predictor import DiseasePredictor
-    predictor = DiseasePredictor()
-    loaded = predictor.load_all_models()
-    return predictor, loaded
+    try:
+        predictor = DiseasePredictor()
+        loaded = predictor.load_all_models()
+        return predictor, loaded, None
+    except Exception as e:
+        return None, [], str(e)
 
-try:
-    predictor, loaded_models = load_models()
-    models_available = len(loaded_models) > 0
-except Exception as e:
-    st.error(f"Error loading models: {str(e)}")
-    predictor = None
-    models_available = False
-    loaded_models = []
+# Initialize models
+predictor, loaded_models, error = load_models()
+models_available = len(loaded_models) > 0
+
+if error and not models_available:
+    # Show error in sidebar but don't block app
+    with st.sidebar:
+        st.error("⚠️ Models not loaded")
+        with st.expander("Details"):
+            st.code(error)
 
 # Sidebar navigation
 with st.sidebar:

@@ -42,22 +42,35 @@ class DiseasePredictor:
         return loaded
     
     def predict(self, disease: str, patient_data: pd.DataFrame) -> Dict[str, Any]:
-        """Generate prediction for a specific disease"""
+        """Generate prediction for a specific disease with error handling"""
         if disease not in self.models:
-            raise ValueError(f"Model for {disease} not loaded")
+            raise ValueError(f"Model for {disease} not loaded. Available models: {list(self.models.keys())}")
         
-        model = self.models[disease]
+        try:
+            model = self.models[disease]
+            
+            # Get prediction probability
+            proba = model.predict_proba(patient_data)
+            
+            # Handle different probability array shapes
+            if len(proba.shape) == 2 and proba.shape[1] == 2:
+                prob = proba[0][1]  # Binary classification
+            else:
+                prob = proba[0][0]  # Single probability
+            
+            prediction = int(prob > 0.5)
+            
+            return {
+                "disease": disease,
+                "probability": float(prob),
+                "prediction": prediction,
+                "risk_tier": self._get_risk_tier(prob)
+            }
         
-        # Get prediction probability
-        prob = model.predict_proba(patient_data)[0][1]
-        prediction = int(prob > 0.5)
-        
-        return {
-            "disease": disease,
-            "probability": float(prob),
-            "prediction": prediction,
-            "risk_tier": self._get_risk_tier(prob)
-        }
+        except IndexError as e:
+            raise RuntimeError(f"Prediction array shape mismatch: {str(e)}")
+        except Exception as e:
+            raise RuntimeError(f"Prediction failed for {disease}: {str(e)}")
     
     def predict_all(self, patient_data: pd.DataFrame) -> Dict[str, Dict[str, Any]]:
         """Generate predictions for all loaded disease models"""

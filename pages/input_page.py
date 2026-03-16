@@ -172,23 +172,53 @@ def show_ckd_form(predictor):
 
 
 def process_batch(df, disease, predictor):
-    """Process batch CSV predictions"""
+    """Process batch CSV predictions with progress tracking"""
     processor = DataProcessor()
     
     try:
+        # Validate CSV first
+        is_valid, message = processor.validate_csv(df, disease)
+        if not is_valid:
+            st.error(f"❌ CSV Validation Failed: {message}")
+            st.info("💡 Download sample CSV template from the sidebar")
+            return []
+        elif "Extra columns" in message:
+            st.warning(message)
+        
         # Validate and preprocess
         df_clean = processor.validate_and_preprocess(df, disease)
         
-        # Generate predictions
+        # Generate predictions with progress bar
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
         results = []
+        total = len(df_clean)
+        
         for idx, row in df_clean.iterrows():
-            patient_df = pd.DataFrame([row])
-            result = predictor.predict(disease, patient_df)
-            result['patient_id'] = idx
-            results.append(result)
+            status_text.text(f"Processing patient {idx + 1} of {total}...")
+            
+            try:
+                patient_df = pd.DataFrame([row])
+                result = predictor.predict(disease, patient_df)
+                result['patient_id'] = idx + 1
+                results.append(result)
+            except Exception as e:
+                st.warning(f"⚠️ Failed to process patient {idx + 1}: {str(e)}")
+                continue
+            
+            progress_bar.progress((idx + 1) / total)
+        
+        progress_bar.empty()
+        status_text.empty()
         
         return results
     
+    except ValueError as e:
+        st.error(f"❌ Validation Error: {str(e)}")
+        st.info("💡 Expected columns: " + ", ".join(FEATURE_CONFIGS[disease]['features']))
+        return []
     except Exception as e:
-        st.error(f"Error processing batch: {str(e)}")
+        st.error(f"❌ Error processing batch: {str(e)}")
+        st.info("💡 Please check your CSV format and try again")
         return []

@@ -2,10 +2,18 @@
 
 Explainable Multi-Disease Risk Prediction using Machine Learning and SHAP
 
-![Status](https://img.shields.io/badge/Status-MVP%20Complete-success)
+![Status](https://img.shields.io/badge/Status-Production%20Ready-success)
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.32.0-red)
+![PyCaret](https://img.shields.io/badge/PyCaret-3.3.2-orange)
+![SHAP](https://img.shields.io/badge/SHAP-0.45.1-purple)
 ![License](https://img.shields.io/badge/License-MIT-green)
+![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen)
+
+## 🔗 Live Demo
+
+> **Coming Soon**: Deploy to Streamlit Cloud and add your URL here  
+> `https://your-app.streamlit.app`
 
 ## 🎯 Overview
 
